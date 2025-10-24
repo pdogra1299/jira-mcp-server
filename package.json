@@ -1,6 +1,6 @@
 {
   "name": "@nexus2520/jira-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for Jira API integration - supports Jira Cloud",
   "type": "module",
   "main": "./build/index.js",
