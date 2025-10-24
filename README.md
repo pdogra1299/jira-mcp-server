@@ -1,6 +1,6 @@
 # Jira MCP Server
 
-[![npm version](https://badge.fury.io/js/@nexus2520%jira-mcp-server.svg)](https://www.npmjs.com/package/@nexus2520/jira-mcp-server)
+[![npm version](https://badge.fury.io/js/@nexus2520%2Fjira-mcp-server.svg)](https://www.npmjs.com/package/@nexus2520/jira-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Model Context Protocol (MCP) server for Jira API integration. This server enables AI assistants like Claude to interact with Jira Cloud instances for issue management, search, comments, and workflow transitions.
