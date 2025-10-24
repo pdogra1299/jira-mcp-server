@@ -1,28 +1,33 @@
 # Jira MCP Server
 
+[![npm version](https://badge.fury.io/js/@nexus2520%2Fjira-mcp-server.svg)](https://www.npmjs.com/package/@nexus2520/jira-mcp-server)
+
 A Model Context Protocol (MCP) server for Jira API integration. This server enables AI assistants like Claude to interact with Jira Cloud instances for issue management, search, comments, and workflow transitions.
 
 ## Features
 
-- **Issue Management**: Get, create, update, and assign Jira issues
+- **Issue Management**: Get, create, update, and assign Jira issues with custom field support
 - **JQL Search**: Search issues using Jira Query Language
-- **Comments**: Add and retrieve comments on issues
+- **Comments**: Add and retrieve comments on issues (supports mentions and links)
 - **Workflow**: Get available transitions and change issue status
+- **Metadata Discovery**: Get field requirements and allowed values for projects
+- **User Search**: Find users by email or name for assignments
 - **Projects**: List all accessible projects
 - **API Token Authentication**: Secure authentication using email + API token
 
 ## Installation
 
-### Prerequisites
+### Using npm (Recommended)
 
-- Node.js >= 16.0.0
-- A Jira Cloud account with API access
-- Jira API token (generate from [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens))
+```bash
+npm install -g @nexus2520/jira-mcp-server
+```
 
-### Setup
+### From Source
 
-1. **Clone or navigate to the repository**:
+1. **Clone the repository**:
    ```bash
+   git clone https://github.com/pdogra1299/jira-mcp-server.git
    cd jira-mcp-server
    ```
 
@@ -35,6 +40,12 @@ A Model Context Protocol (MCP) server for Jira API integration. This server enab
    ```bash
    pnpm run build
    ```
+
+### Prerequisites
+
+- Node.js >= 16.0.0
+- A Jira Cloud account with API access
+- Jira API token (generate from [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens))
 
 ## Configuration
 
@@ -55,7 +66,27 @@ Add the following to your Claude Desktop MCP settings file:
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
 
-**Configuration**:
+**Configuration (if installed via npm)**:
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@nexus2520/jira-mcp-server"
+      ],
+      "env": {
+        "JIRA_EMAIL": "your-email@company.com",
+        "JIRA_API_TOKEN": "your-api-token-here",
+        "JIRA_BASE_URL": "https://yourcompany.atlassian.net"
+      }
+    }
+  }
+}
+```
+
+**Configuration (if built from source)**:
 ```json
 {
   "mcpServers": {
@@ -92,32 +123,37 @@ Add the following to your Claude Desktop MCP settings file:
 Get detailed information about a Jira issue.
 
 **Parameters**:
-- `issueKey` (required): The issue key (e.g., "JP-1234")
+- `issueKey` (required): The issue key (e.g., "PROJ-123")
 
 **Example**:
 ```
-Get details for issue JP-1234
+Get details for issue PROJ-123
 ```
 
 #### `create_issue`
 Create a new Jira issue.
 
+**Important**: Always use `get_create_metadata` first to discover required fields, custom fields, and allowed values.
+
 **Parameters**:
-- `projectKey` (required): Project key (e.g., "JP")
+- `projectKey` (required): Project key (e.g., "PROJ", "DEV")
 - `summary` (required): Issue title
 - `issueType` (required): Type (e.g., "Bug", "Task", "Story")
 - `description` (optional): Issue description
 - `priority` (optional): Priority name
 - `assignee` (optional): Assignee account ID or email
 - `labels` (optional): Array of labels
+- `customFields` (optional): Custom fields object
 
 **Example**:
 ```
-Create a bug in project JP with summary "Login button not working" and description "Users cannot log in"
+Create a bug in project PROJ with summary "Login button not working" and description "Users cannot log in"
 ```
 
 #### `update_issue`
 Update fields of an existing issue.
+
+**Tip**: Use `get_create_metadata` to discover available custom fields and their allowed values.
 
 **Parameters**:
 - `issueKey` (required): Issue to update
@@ -126,26 +162,42 @@ Update fields of an existing issue.
 - `priority` (optional): New priority
 - `assignee` (optional): New assignee
 - `labels` (optional): New labels array
+- `customFields` (optional): Custom fields object
 
 #### `assign_issue`
 Assign an issue to a user.
 
 **Parameters**:
 - `issueKey` (required): Issue to assign
-- `assignee` (required): User account ID or "-1" to unassign
+- `assignee` (required): User account ID, email, or "-1" to unassign
 
-### Search & Discovery
+### Metadata & Discovery
+
+#### `get_create_metadata`
+Get field requirements and metadata for creating issues in a project.
+
+**Parameters**:
+- `projectKey` (required): Project key
+- `issueType` (optional): Filter by specific issue type
+
+#### `search_users`
+Search for users by name or email to get their account ID.
+
+**Parameters**:
+- `query` (required): Search query (email or name)
+- `maxResults` (optional): Max results (default: 50)
+
+### Search
 
 #### `search_issues`
-Search for issues using JQL.
+Search for issues using JQL. Returns issue keys and titles.
 
 **Parameters**:
 - `jql` (required): JQL query string
 - `maxResults` (optional): Max results (default: 50)
-- `startAt` (optional): Pagination start (default: 0)
 
 **Example JQL queries**:
-- `"project = JP AND status = Open"`
+- `"project = PROJ AND status = Open"`
 - `"assignee = currentUser() AND status != Done"`
 - `"priority = High AND created >= -7d"`
 
@@ -193,12 +245,13 @@ Change the status of an issue.
 Once configured, you can interact with Jira naturally:
 
 ```
-"Show me all open bugs in project JP"
+"Show me all open bugs in project PROJ"
 "Create a new task in PROJ with summary 'Update documentation'"
-"Add a comment to JP-1234 saying 'Fixed in latest release'"
-"What are the available transitions for JP-1234?"
-"Move JP-1234 to In Progress"
-"Assign JP-1234 to john.doe@company.com"
+"Add a comment to PROJ-123 saying 'Fixed in latest release'"
+"What are the available transitions for PROJ-123?"
+"Move PROJ-123 to In Progress"
+"Assign PROJ-123 to john.doe@company.com"
+"Get the required fields for creating issues in PROJ"
 ```
 
 ## Development

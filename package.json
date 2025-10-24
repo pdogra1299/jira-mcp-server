@@ -30,6 +30,17 @@
   ],
   "author": "Parth Dogra",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pdogra1299/jira-mcp-server.git"
+  },
+  "homepage": "https://github.com/pdogra1299/jira-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/pdogra1299/jira-mcp-server/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=16.0.0"
   },
