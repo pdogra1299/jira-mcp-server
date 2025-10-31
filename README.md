@@ -5,6 +5,10 @@
 
 A Model Context Protocol (MCP) server for Jira API integration. This server enables AI assistants like Claude to interact with Jira Cloud instances for issue management, search, comments, and workflow transitions.
 
+<a href="https://glama.ai/mcp/servers/@pdogra1299/jira-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@pdogra1299/jira-mcp-server/badge" alt="Jira Server MCP server" />
+</a>
+
 ## Features
 
 - **Issue Management**: Get, create, update, and assign Jira issues with custom field support
