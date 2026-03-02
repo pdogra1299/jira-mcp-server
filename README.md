@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/@nexus2520%2Fjira-mcp-server.svg)](https://www.npmjs.com/package/@nexus2520/jira-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Model Context Protocol (MCP) server for Jira API integration. This server enables AI assistants like Claude to interact with Jira Cloud instances for issue management, search, comments, and workflow transitions.
+A Model Context Protocol (MCP) server for Jira API integration. This server enables AI assistants like Claude to interact with Jira Cloud instances for issue management, search, comments, workflow transitions, and attachment handling.
 
 ## Features
 
@@ -14,6 +14,7 @@ A Model Context Protocol (MCP) server for Jira API integration. This server enab
 - **Metadata Discovery**: Get field requirements and allowed values for projects
 - **User Search**: Find users by email or name for assignments
 - **Projects**: List all accessible projects
+- **Attachments**: List, upload, delete attachments and retrieve their content — text files returned as text, images rendered inline via Claude vision
 - **API Token Authentication**: Secure authentication using email + API token
 
 ## Installation
@@ -238,6 +239,59 @@ Change the status of an issue.
 - `issueKey` (required): Issue to transition
 - `transitionId` (required): Transition ID (from get_transitions)
 - `comment` (optional): Comment to add with transition
+
+### Attachments
+
+#### `list_attachments`
+List all attachments for a Jira issue, including metadata such as filename, size, MIME type, author, and ID.
+
+**Parameters**:
+- `issueKey` (required): Issue key (e.g., "PROJ-123")
+
+**Example**:
+```
+List attachments on PROJ-123
+```
+
+#### `get_attachment_content`
+Download and return the content of a Jira attachment. Use `list_attachments` first to get attachment IDs.
+
+- **Text files** (`text/*`, `application/json`, `application/xml`): returned as readable text
+- **Images** (`image/*`): returned as base64 — Claude will render them inline
+- **Other types** (PDF, zip, etc.): returns a descriptive message with file metadata
+
+**Parameters**:
+- `attachmentId` (required): Attachment ID (from list_attachments)
+- `mimeType` (optional): MIME type hint; auto-detected from Jira metadata if omitted
+
+**Example**:
+```
+Get the content of attachment 136904
+```
+
+#### `upload_attachment`
+Upload a local file as an attachment to a Jira issue.
+
+**Parameters**:
+- `issueKey` (required): The issue to attach the file to (e.g., `PROJ-123`)
+- `filePath` (required): Absolute or relative local file path to upload
+- `fileName` (optional): Override the filename shown in Jira (defaults to the file's basename)
+
+**Example**:
+```
+Upload /tmp/report.pdf to PROJ-123
+```
+
+#### `delete_attachment`
+Delete a Jira attachment by its ID. Use `list_attachments` first to get the attachment ID.
+
+**Parameters**:
+- `attachmentId` (required): The attachment ID to delete (from `list_attachments`)
+
+**Example**:
+```
+Delete attachment 136904
+```
 
 ### API Reference
 

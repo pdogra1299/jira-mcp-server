@@ -16,6 +16,7 @@ import { TransitionHandlers } from './handlers/transition-handlers.js';
 import { ProjectHandlers } from './handlers/project-handlers.js';
 import { MetadataHandlers } from './handlers/metadata-handlers.js';
 import { UserHandlers } from './handlers/user-handlers.js';
+import { AttachmentHandlers } from './handlers/attachment-handlers.js';
 import { toolDefinitions } from './tools/definitions.js';
 
 // Get environment variables
@@ -45,6 +46,7 @@ class JiraMCPServer {
   private projectHandlers: ProjectHandlers;
   private metadataHandlers: MetadataHandlers;
   private userHandlers: UserHandlers;
+  private attachmentHandlers: AttachmentHandlers;
 
   constructor() {
     this.server = new Server(
@@ -74,6 +76,7 @@ class JiraMCPServer {
     this.transitionHandlers = new TransitionHandlers(this.apiClient);
     this.projectHandlers = new ProjectHandlers(this.apiClient);
     this.metadataHandlers = new MetadataHandlers(this.apiClient);
+    this.attachmentHandlers = new AttachmentHandlers(this.apiClient);
 
     this.setupToolHandlers();
 
@@ -129,6 +132,16 @@ class JiraMCPServer {
           return this.transitionHandlers.handleGetTransitions(request.params.arguments);
         case 'transition_issue':
           return this.transitionHandlers.handleTransitionIssue(request.params.arguments);
+
+        // Attachment tools
+        case 'list_attachments':
+          return this.attachmentHandlers.handleListAttachments(request.params.arguments);
+        case 'get_attachment_content':
+          return this.attachmentHandlers.handleGetAttachmentContent(request.params.arguments);
+        case 'upload_attachment':
+          return this.attachmentHandlers.handleUploadAttachment(request.params.arguments);
+        case 'delete_attachment':
+          return this.attachmentHandlers.handleDeleteAttachment(request.params.arguments);
 
         default:
           throw new McpError(

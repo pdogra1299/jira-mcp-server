@@ -256,4 +256,74 @@ export const toolDefinitions = [
       required: ['issueKey', 'transitionId'],
     },
   },
+
+  // Attachment Tools
+  {
+    name: 'list_attachments',
+    description: 'List all attachments for a Jira issue, including metadata such as filename, size, MIME type, author, and ID',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        issueKey: {
+          type: 'string',
+          description: 'The issue key (e.g., PROJ-123)',
+        },
+      },
+      required: ['issueKey'],
+    },
+  },
+  {
+    name: 'get_attachment_content',
+    description: 'Download and return the content of a Jira attachment. Text files are returned as text, images as base64 for rendering. Use list_attachments first to get attachment IDs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        attachmentId: {
+          type: 'string',
+          description: 'The attachment ID (obtained from list_attachments)',
+        },
+        mimeType: {
+          type: 'string',
+          description: 'Optional MIME type hint; auto-detected from Jira metadata if omitted',
+        },
+      },
+      required: ['attachmentId'],
+    },
+  },
+  {
+    name: 'upload_attachment',
+    description: 'Upload a local file as an attachment to a Jira issue',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        issueKey: {
+          type: 'string',
+          description: 'The issue key to attach the file to (e.g., PROJ-123)',
+        },
+        filePath: {
+          type: 'string',
+          description: 'Absolute or relative local file path to upload',
+        },
+        fileName: {
+          type: 'string',
+          description: 'Override the filename shown in Jira (optional, defaults to the file\'s basename)',
+        },
+      },
+      required: ['issueKey', 'filePath'],
+    },
+  },
+  {
+    name: 'delete_attachment',
+    description: 'Delete a Jira attachment by its ID. Use list_attachments first to get attachment IDs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        attachmentId: {
+          type: 'string',
+          description: 'The attachment ID to delete (obtained from list_attachments)',
+        },
+      },
+      required: ['attachmentId'],
+    },
+  },
 ];

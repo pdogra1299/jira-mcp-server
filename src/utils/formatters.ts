@@ -274,6 +274,32 @@ export class JiraFormatters {
     return formatted;
   }
 
+  static formatAttachments(attachments: any[]): string {
+    if (!attachments || attachments.length === 0) {
+      return 'No attachments found.';
+    }
+
+    let formatted = `# Attachments (${attachments.length})\n\n`;
+    formatted += `| # | Filename | Size | Type | Author | Date | ID |\n`;
+    formatted += `|---|----------|------|------|--------|------|----|\n`;
+
+    attachments.forEach((attachment: any, index: number) => {
+      const filename = attachment.filename || 'Unknown';
+      const sizeBytes = attachment.size || 0;
+      const size = sizeBytes >= 1024 * 1024
+        ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+        : `${(sizeBytes / 1024).toFixed(1)} KB`;
+      const mimeType = attachment.mimeType || 'Unknown';
+      const author = attachment.author?.displayName || 'Unknown';
+      const created = attachment.created ? new Date(attachment.created).toLocaleString() : 'Unknown';
+      const id = attachment.id || 'Unknown';
+
+      formatted += `| ${index + 1} | ${filename} | ${size} | ${mimeType} | ${author} | ${created} | ${id} |\n`;
+    });
+
+    return formatted;
+  }
+
   static formatError(error: any): string {
     if (typeof error === 'string') {
       return `Error: ${error}`;

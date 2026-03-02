@@ -1,9 +1,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import FormData from 'form-data';
+import { createReadStream } from 'fs';
+import { basename } from 'path';
 
 export class JiraApiClient {
   private client: AxiosInstance;
   private baseUrl: string;
   private email: string;
+  private authHeader: string;
 
   constructor(baseUrl: string, email: string, apiToken: string) {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // Remove trailing slash
@@ -11,6 +15,7 @@ export class JiraApiClient {
 
     // Create base64 encoded auth token
     const authToken = Buffer.from(`${email}:${apiToken}`).toString('base64');
+    this.authHeader = `Basic ${authToken}`;
 
     this.client = axios.create({
       baseURL: `${this.baseUrl}/rest/api/3`,
@@ -76,6 +81,44 @@ export class JiraApiClient {
   async delete<T = any>(endpoint: string): Promise<T> {
     const response = await this.client.delete(endpoint);
     return response.data;
+  }
+
+  async uploadAttachment(issueKey: string, filePath: string, fileName?: string): Promise<any[]> {
+    const form = new FormData();
+    const name = fileName || basename(filePath);
+    form.append('file', createReadStream(filePath), { filename: name });
+
+    const response = await this.client.post(
+      `/issue/${issueKey}/attachments`,
+      form,
+      {
+        headers: {
+          'X-Atlassian-Token': 'no-check',
+          ...form.getHeaders(),
+        },
+      }
+    );
+    return response.data;
+  }
+
+  async downloadAttachment(attachmentId: string): Promise<{ data: Buffer; contentType: string }> {
+    const response = await axios.get(
+      `${this.baseUrl}/rest/api/3/attachment/content/${attachmentId}`,
+      {
+        headers: {
+          'Authorization': this.authHeader,
+          'Accept': '*/*',
+        },
+        responseType: 'arraybuffer',
+        timeout: 60000,
+        maxRedirects: 5,
+      }
+    );
+
+    return {
+      data: Buffer.from(response.data),
+      contentType: (response.headers['content-type'] as string) || 'application/octet-stream',
+    };
   }
 
   getBaseUrl(): string {
