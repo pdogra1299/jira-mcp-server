@@ -1,329 +1,101 @@
 export const toolDefinitions = [
-  // Issue Management Tools
   {
-    name: 'get_issue',
-    description: 'Get detailed information about a Jira issue by its key or ID',
+    name: 'jira_issues',
+    description: 'Manage Jira issues. Use get_create_metadata action in jira_search first before creating issues.',
     inputSchema: {
       type: 'object',
       properties: {
-        issueKey: {
+        action: {
           type: 'string',
-          description: 'The issue key (e.g., PROJ-123) or issue ID (e.g., 378150)',
+          enum: ['get', 'create', 'update', 'assign'],
+          description: 'get: fetch issue; create: new issue; update: edit fields; assign: set assignee',
         },
+        issueKey: { type: 'string', description: 'Issue key (e.g. PROJ-123). Required for: get, update, assign' },
+        projectKey: { type: 'string', description: 'Project key. Required for: create' },
+        summary: { type: 'string', description: 'Issue title. Required for: create' },
+        issueType: { type: 'string', description: 'e.g. Bug, Task, Story. Required for: create' },
+        description: { description: 'Plain text or ADF object' },
+        priority: { type: 'string', description: 'e.g. High, Medium, Low' },
+        assignee: { type: 'string', description: 'Email or account ID. Use "-1" to unassign. Required for: assign' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Array of label strings' },
+        customFields: { type: 'object', description: 'e.g. {"customfield_10000": "value"}' },
       },
-      required: ['issueKey'],
+      required: ['action'],
     },
   },
   {
-    name: 'create_issue',
-    description: 'Create a new Jira issue with specified fields. IMPORTANT: Always use get_create_metadata first to discover required fields, custom fields, and allowed values for the project and issue type.',
+    name: 'jira_search',
+    description: 'Search and discover Jira resources: issues via JQL, projects, users, or field metadata.',
     inputSchema: {
       type: 'object',
       properties: {
-        projectKey: {
+        action: {
           type: 'string',
-          description: 'The project key where the issue will be created (e.g., PROJ, DEV)',
+          enum: ['issues', 'projects', 'users', 'create_metadata'],
+          description: 'issues: JQL search; projects: list all; users: find by name/email; create_metadata: field requirements for a project',
         },
-        summary: {
-          type: 'string',
-          description: 'The issue summary/title',
-        },
-        issueType: {
-          type: 'string',
-          description: 'The issue type (e.g., Bug, Task, Story)',
-        },
-        description: {
-          description: 'The issue description in Atlassian Document Format (ADF). Can be a simple string for plain text, or an ADF object for rich formatting. Example ADF: {"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"Description text"}]}]}',
-        },
-        priority: {
-          type: 'string',
-          description: 'Priority name (e.g., High, Medium, Low) - optional',
-        },
-        assignee: {
-          type: 'string',
-          description: 'Assignee account ID or email (will auto-lookup account ID from email) - optional',
-        },
-        labels: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Array of labels - optional',
-        },
-        customFields: {
-          type: 'object',
-          description: 'Custom fields as key-value pairs (e.g., {"customfield_10000": "value"}) - optional. Use get_create_metadata to discover available fields.',
-        },
+        jql: { type: 'string', description: 'JQL query. Required for: issues' },
+        query: { type: 'string', description: 'Name or email. Required for: users' },
+        projectKey: { type: 'string', description: 'Project key. Required for: create_metadata' },
+        issueType: { type: 'string', description: 'Filter by type (e.g. Bug). Optional for: create_metadata' },
+        maxResults: { type: 'number', description: 'Max results (default: 50)' },
       },
-      required: ['projectKey', 'summary', 'issueType'],
+      required: ['action'],
     },
   },
   {
-    name: 'update_issue',
-    description: 'Update fields of an existing Jira issue. TIP: Use get_create_metadata to discover available custom fields and their allowed values for the project.',
+    name: 'jira_comments',
+    description: 'Get or add comments on a Jira issue.',
     inputSchema: {
       type: 'object',
       properties: {
-        issueKey: {
+        action: {
           type: 'string',
-          description: 'The issue key to update (e.g., PROJ-123)',
+          enum: ['get', 'add'],
+          description: 'get: fetch all comments; add: post a comment',
         },
-        summary: {
-          type: 'string',
-          description: 'New summary/title - optional',
-        },
-        description: {
-          description: 'New description in ADF format or plain string - optional',
-        },
-        priority: {
-          type: 'string',
-          description: 'New priority name - optional',
-        },
-        assignee: {
-          type: 'string',
-          description: 'New assignee account ID or email (will auto-lookup account ID from email) - optional',
-        },
-        labels: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'New labels array - optional',
-        },
-        customFields: {
-          type: 'object',
-          description: 'Custom fields as key-value pairs (e.g., {"customfield_10000": "value"}) - optional. Use get_create_metadata to discover available fields.',
-        },
+        issueKey: { type: 'string', description: 'Issue key (e.g. PROJ-123)' },
+        comment: { description: 'Plain text or ADF object. Required for: add' },
       },
-      required: ['issueKey'],
+      required: ['action', 'issueKey'],
     },
   },
   {
-    name: 'assign_issue',
-    description: 'Assign a Jira issue to a user',
+    name: 'jira_workflow',
+    description: 'Manage issue status transitions. Use get_transitions first, then transition with the ID.',
     inputSchema: {
       type: 'object',
       properties: {
-        issueKey: {
+        action: {
           type: 'string',
-          description: 'The issue key to assign (e.g., PROJ-123)',
+          enum: ['get_transitions', 'transition'],
+          description: 'get_transitions: list available statuses; transition: change status',
         },
-        assignee: {
-          type: 'string',
-          description: 'User account ID, email (will auto-lookup account ID), or "-1" to unassign',
-        },
+        issueKey: { type: 'string', description: 'Issue key (e.g. PROJ-123)' },
+        transitionId: { type: 'string', description: 'Transition ID from get_transitions. Required for: transition' },
+        comment: { type: 'string', description: 'Plain text comment to add with the transition. Optional for: transition' },
       },
-      required: ['issueKey', 'assignee'],
-    },
-  },
-
-  // Search Tools
-  {
-    name: 'search_issues',
-    description: 'Search for Jira issues using JQL (Jira Query Language). Returns issue keys and titles. Use get_issue for full details.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        jql: {
-          type: 'string',
-          description: 'JQL query string (e.g., "project = PROJ AND status = Open")',
-        },
-        maxResults: {
-          type: 'number',
-          description: 'Maximum number of results to return (default: 50)',
-        },
-      },
-      required: ['jql'],
+      required: ['action', 'issueKey'],
     },
   },
   {
-    name: 'list_projects',
-    description: 'List all accessible Jira projects',
+    name: 'jira_attachments',
+    description: 'Manage Jira issue attachments: list, read, upload, or delete.',
     inputSchema: {
       type: 'object',
       properties: {
-        maxResults: {
-          type: 'number',
-          description: 'Maximum number of projects to return (default: 50)',
+        action: {
+          type: 'string',
+          enum: ['list', 'get_content', 'upload', 'delete'],
+          description: 'list: show all attachments; get_content: download file (text returned as text, images as base64); upload: attach local file; delete: remove attachment',
         },
+        issueKey: { type: 'string', description: 'Issue key. Required for: list, upload' },
+        attachmentId: { type: 'string', description: 'Attachment ID from list. Required for: get_content, delete' },
+        filePath: { type: 'string', description: 'Local file path. Required for: upload' },
+        fileName: { type: 'string', description: 'Override filename in Jira. Optional for: upload' },
+        mimeType: { type: 'string', description: 'MIME hint (auto-detected if omitted). Optional for: get_content' },
       },
-    },
-  },
-
-  // Metadata Tools
-  {
-    name: 'get_create_metadata',
-    description: 'Get field requirements and metadata for creating issues in a project. Shows required fields, custom fields, and allowed values.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        projectKey: {
-          type: 'string',
-          description: 'The project key (e.g., PROJ, DEV)',
-        },
-        issueType: {
-          type: 'string',
-          description: 'Optional: Filter by specific issue type (e.g., Bug, Task)',
-        },
-      },
-      required: ['projectKey'],
-    },
-  },
-
-  // User Tools
-  {
-    name: 'search_users',
-    description: 'Search for Jira users by name or email to get their account ID. Use this to find account IDs for assigning issues.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'Search query - can be email, name, or partial match (e.g., "john.doe@company.com" or "John Doe")',
-        },
-        maxResults: {
-          type: 'number',
-          description: 'Maximum number of results to return (default: 50)',
-        },
-      },
-      required: ['query'],
-    },
-  },
-
-  // Comment Tools
-  {
-    name: 'add_comment',
-    description: 'Add a comment to a Jira issue',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key to comment on (e.g., PROJ-123)',
-        },
-        comment: {
-          description: 'The comment in ADF format or plain string. Example ADF: {"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"Comment text"}]}]}',
-        },
-      },
-      required: ['issueKey', 'comment'],
-    },
-  },
-  {
-    name: 'get_comments',
-    description: 'Get all comments for a Jira issue',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key (e.g., PROJ-123)',
-        },
-      },
-      required: ['issueKey'],
-    },
-  },
-
-  // Transition Tools
-  {
-    name: 'get_transitions',
-    description: 'Get available status transitions for a Jira issue',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key (e.g., PROJ-123)',
-        },
-      },
-      required: ['issueKey'],
-    },
-  },
-  {
-    name: 'transition_issue',
-    description: 'Change the status of a Jira issue by transitioning it',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key to transition (e.g., PROJ-123)',
-        },
-        transitionId: {
-          type: 'string',
-          description: 'The transition ID to execute (get from get_transitions)',
-        },
-        comment: {
-          type: 'string',
-          description: 'Optional comment to add with the transition',
-        },
-      },
-      required: ['issueKey', 'transitionId'],
-    },
-  },
-
-  // Attachment Tools
-  {
-    name: 'list_attachments',
-    description: 'List all attachments for a Jira issue, including metadata such as filename, size, MIME type, author, and ID',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key (e.g., PROJ-123)',
-        },
-      },
-      required: ['issueKey'],
-    },
-  },
-  {
-    name: 'get_attachment_content',
-    description: 'Download and return the content of a Jira attachment. Text files are returned as text, images as base64 for rendering. Use list_attachments first to get attachment IDs.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        attachmentId: {
-          type: 'string',
-          description: 'The attachment ID (obtained from list_attachments)',
-        },
-        mimeType: {
-          type: 'string',
-          description: 'Optional MIME type hint; auto-detected from Jira metadata if omitted',
-        },
-      },
-      required: ['attachmentId'],
-    },
-  },
-  {
-    name: 'upload_attachment',
-    description: 'Upload a local file as an attachment to a Jira issue',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        issueKey: {
-          type: 'string',
-          description: 'The issue key to attach the file to (e.g., PROJ-123)',
-        },
-        filePath: {
-          type: 'string',
-          description: 'Absolute or relative local file path to upload',
-        },
-        fileName: {
-          type: 'string',
-          description: 'Override the filename shown in Jira (optional, defaults to the file\'s basename)',
-        },
-      },
-      required: ['issueKey', 'filePath'],
-    },
-  },
-  {
-    name: 'delete_attachment',
-    description: 'Delete a Jira attachment by its ID. Use list_attachments first to get attachment IDs.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        attachmentId: {
-          type: 'string',
-          description: 'The attachment ID to delete (obtained from list_attachments)',
-        },
-      },
-      required: ['attachmentId'],
+      required: ['action'],
     },
   },
 ];

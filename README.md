@@ -9,13 +9,13 @@ A Model Context Protocol (MCP) server for Jira API integration. This server enab
 
 - **Issue Management**: Get, create, update, and assign Jira issues with custom field support
 - **JQL Search**: Search issues using Jira Query Language
-- **Comments**: Add and retrieve comments on issues (supports mentions and links)
+- **Comments**: Add and retrieve comments on issues
 - **Workflow**: Get available transitions and change issue status
 - **Metadata Discovery**: Get field requirements and allowed values for projects
 - **User Search**: Find users by email or name for assignments
 - **Projects**: List all accessible projects
 - **Attachments**: List, upload, delete attachments and retrieve their content — text files returned as text, images rendered inline via Claude vision
-- **API Token Authentication**: Secure authentication using email + API token
+- **Token Efficient**: 5 compound tools instead of 16 flat tools — ~50% fewer tokens per session
 
 ## Installation
 
@@ -52,8 +52,6 @@ npm install -g @nexus2520/jira-mcp-server
 ## Configuration
 
 ### Environment Variables
-
-The server requires the following environment variables:
 
 - `JIRA_EMAIL`: Your Atlassian account email
 - `JIRA_API_TOKEN`: Your Jira API token
@@ -93,12 +91,10 @@ Add the following to your Claude Desktop MCP settings file:
 {
   "mcpServers": {
     "jira": {
-      "name": "jira",
       "command": "node",
       "args": [
         "/absolute/path/to/jira-mcp-server/build/index.js"
       ],
-      "transport": "stdio",
       "env": {
         "JIRA_EMAIL": "your-email@company.com",
         "JIRA_API_TOKEN": "your-api-token-here",
@@ -117,183 +113,152 @@ Add the following to your Claude Desktop MCP settings file:
 4. Copy the generated token
 5. Use it in your configuration
 
+## Tool Architecture
+
+This server exposes **5 compound tools** — each with an `action` parameter that selects the operation. This design reduces the token overhead of tool definitions by ~50% compared to 16 flat tools, leaving more context for actual work.
+
+| Tool | Actions | Description |
+|------|---------|-------------|
+| `jira_issues` | `get` `create` `update` `assign` | Full issue lifecycle management |
+| `jira_search` | `issues` `projects` `users` `create_metadata` | Search and discovery |
+| `jira_comments` | `get` `add` | Read and write comments |
+| `jira_workflow` | `get_transitions` `transition` | Status transitions |
+| `jira_attachments` | `list` `get_content` `upload` `delete` | File attachments |
+
+---
+
 ## Available Tools
 
-### Issue Management
+### `jira_issues`
 
-#### `get_issue`
-Get detailed information about a Jira issue.
+Manage the full lifecycle of Jira issues.
 
-**Parameters**:
-- `issueKey` (required): The issue key (e.g., "PROJ-123")
+**Required**: `action`
 
-**Example**:
+| Action | Description | Required params | Optional params |
+|--------|-------------|-----------------|-----------------|
+| `get` | Fetch full issue details | `issueKey` | — |
+| `create` | Create a new issue | `projectKey`, `summary`, `issueType` | `description`, `priority`, `assignee`, `labels`, `customFields` |
+| `update` | Edit fields on an existing issue | `issueKey` | `summary`, `description`, `priority`, `assignee`, `labels`, `customFields` |
+| `assign` | Set or clear the assignee | `issueKey`, `assignee` | — |
+
+**Tips**:
+- Always call `jira_search` with `action=create_metadata` before creating issues to discover required custom fields and allowed values.
+- Pass `assignee: "-1"` to unassign an issue.
+- `description` accepts plain text or an [Atlassian Document Format (ADF)](https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/) object.
+- `customFields` is a key-value map: `{"customfield_10000": "value"}`.
+
+**Examples**:
 ```
-Get details for issue PROJ-123
-```
-
-#### `create_issue`
-Create a new Jira issue.
-
-**Important**: Always use `get_create_metadata` first to discover required fields, custom fields, and allowed values.
-
-**Parameters**:
-- `projectKey` (required): Project key (e.g., "PROJ", "DEV")
-- `summary` (required): Issue title
-- `issueType` (required): Type (e.g., "Bug", "Task", "Story")
-- `description` (optional): Issue description
-- `priority` (optional): Priority name
-- `assignee` (optional): Assignee account ID or email
-- `labels` (optional): Array of labels
-- `customFields` (optional): Custom fields object
-
-**Example**:
-```
-Create a bug in project PROJ with summary "Login button not working" and description "Users cannot log in"
+Get details for PROJ-123
+Create a Bug in project PROJ with summary "Login button broken"
+Update PROJ-123 priority to High
+Assign PROJ-123 to john.doe@company.com
 ```
 
-#### `update_issue`
-Update fields of an existing issue.
+---
 
-**Tip**: Use `get_create_metadata` to discover available custom fields and their allowed values.
+### `jira_search`
 
-**Parameters**:
-- `issueKey` (required): Issue to update
-- `summary` (optional): New summary
-- `description` (optional): New description
-- `priority` (optional): New priority
-- `assignee` (optional): New assignee
-- `labels` (optional): New labels array
-- `customFields` (optional): Custom fields object
+Search and discover Jira resources.
 
-#### `assign_issue`
-Assign an issue to a user.
+**Required**: `action`
 
-**Parameters**:
-- `issueKey` (required): Issue to assign
-- `assignee` (required): User account ID, email, or "-1" to unassign
+| Action | Description | Required params | Optional params |
+|--------|-------------|-----------------|-----------------|
+| `issues` | Search issues via JQL | `jql` | `maxResults` |
+| `projects` | List all accessible projects | — | `maxResults` |
+| `users` | Find users by name or email | `query` | `maxResults` |
+| `create_metadata` | Get field requirements for creating issues | `projectKey` | `issueType` |
 
-### Metadata & Discovery
-
-#### `get_create_metadata`
-Get field requirements and metadata for creating issues in a project.
-
-**Parameters**:
-- `projectKey` (required): Project key
-- `issueType` (optional): Filter by specific issue type
-
-#### `search_users`
-Search for users by name or email to get their account ID.
-
-**Parameters**:
-- `query` (required): Search query (email or name)
-- `maxResults` (optional): Max results (default: 50)
-
-### Search
-
-#### `search_issues`
-Search for issues using JQL. Returns issue keys and titles.
-
-**Parameters**:
-- `jql` (required): JQL query string
-- `maxResults` (optional): Max results (default: 50)
-
-**Example JQL queries**:
-- `"project = PROJ AND status = Open"`
-- `"assignee = currentUser() AND status != Done"`
-- `"priority = High AND created >= -7d"`
-
-#### `list_projects`
-List all accessible projects.
-
-**Parameters**:
-- `maxResults` (optional): Max results (default: 50)
-
-### Comments
-
-#### `add_comment`
-Add a comment to an issue.
-
-**Parameters**:
-- `issueKey` (required): Issue to comment on
-- `comment` (required): Comment text
-
-#### `get_comments`
-Get all comments for an issue.
-
-**Parameters**:
-- `issueKey` (required): Issue key
-
-### Workflow Transitions
-
-#### `get_transitions`
-Get available status transitions for an issue.
-
-**Parameters**:
-- `issueKey` (required): Issue key
-
-#### `transition_issue`
-Change the status of an issue.
-
-**Parameters**:
-- `issueKey` (required): Issue to transition
-- `transitionId` (required): Transition ID (from get_transitions)
-- `comment` (optional): Comment to add with transition
-
-### Attachments
-
-#### `list_attachments`
-List all attachments for a Jira issue, including metadata such as filename, size, MIME type, author, and ID.
-
-**Parameters**:
-- `issueKey` (required): Issue key (e.g., "PROJ-123")
-
-**Example**:
+**Common JQL examples**:
 ```
-List attachments on PROJ-123
+project = PROJ AND status = Open
+assignee = currentUser() AND status != Done
+priority = High AND created >= -7d
 ```
 
-#### `get_attachment_content`
-Download and return the content of a Jira attachment. Use `list_attachments` first to get attachment IDs.
+**Tips**:
+- Use `create_metadata` before `jira_issues` `create` to understand what fields are required for a project/issue type.
+- Use `users` to look up account IDs for assignments — pass the returned account ID or email to `jira_issues` `assign`.
 
+---
+
+### `jira_comments`
+
+Read and write comments on a Jira issue.
+
+**Required**: `action`, `issueKey`
+
+| Action | Description | Required params |
+|--------|-------------|-----------------|
+| `get` | Fetch all comments on an issue | — |
+| `add` | Post a new comment | `comment` |
+
+`comment` accepts plain text or an ADF object.
+
+**Examples**:
+```
+Get all comments on PROJ-123
+Add a comment to PROJ-123: "Fixed in PR #456"
+```
+
+---
+
+### `jira_workflow`
+
+Manage issue status transitions.
+
+**Required**: `action`, `issueKey`
+
+| Action | Description | Required params | Optional params |
+|--------|-------------|-----------------|-----------------|
+| `get_transitions` | List available status transitions | — | — |
+| `transition` | Move issue to a new status | `transitionId` | `comment` |
+
+**Tip**: Always call `get_transitions` first — transition IDs vary per project and issue type. The `transitionId` from the response is what you pass to `transition`.
+
+**Examples**:
+```
+Get available transitions for PROJ-123
+Move PROJ-123 to "In Progress" (use get_transitions first to find the ID)
+```
+
+---
+
+### `jira_attachments`
+
+Manage file attachments on Jira issues.
+
+**Required**: `action`
+
+| Action | Description | Required params | Optional params |
+|--------|-------------|-----------------|-----------------|
+| `list` | List all attachments with metadata | `issueKey` | — |
+| `get_content` | Download and return file content | `attachmentId` | `mimeType` |
+| `upload` | Attach a local file to an issue | `issueKey`, `filePath` | `fileName` |
+| `delete` | Remove an attachment by ID | `attachmentId` | — |
+
+**Content types returned by `get_content`**:
 - **Text files** (`text/*`, `application/json`, `application/xml`): returned as readable text
 - **Images** (`image/*`): returned as base64 — Claude will render them inline
-- **Other types** (PDF, zip, etc.): returns a descriptive message with file metadata
+- **Other types** (PDF, zip, etc.): returns file metadata with a descriptive message
 
-**Parameters**:
-- `attachmentId` (required): Attachment ID (from list_attachments)
-- `mimeType` (optional): MIME type hint; auto-detected from Jira metadata if omitted
+**Tips**:
+- Use `list` first to get attachment IDs before calling `get_content` or `delete`.
+- `fileName` in `upload` overrides the filename shown in Jira (defaults to the file's basename).
 
-**Example**:
+**Examples**:
 ```
+List attachments on PROJ-123
 Get the content of attachment 136904
-```
-
-#### `upload_attachment`
-Upload a local file as an attachment to a Jira issue.
-
-**Parameters**:
-- `issueKey` (required): The issue to attach the file to (e.g., `PROJ-123`)
-- `filePath` (required): Absolute or relative local file path to upload
-- `fileName` (optional): Override the filename shown in Jira (defaults to the file's basename)
-
-**Example**:
-```
 Upload /tmp/report.pdf to PROJ-123
-```
-
-#### `delete_attachment`
-Delete a Jira attachment by its ID. Use `list_attachments` first to get the attachment ID.
-
-**Parameters**:
-- `attachmentId` (required): The attachment ID to delete (from `list_attachments`)
-
-**Example**:
-```
 Delete attachment 136904
 ```
 
-### API Reference
+---
+
+## API Reference
 
 This server uses the [Jira REST API v3](https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/).
 
@@ -307,7 +272,7 @@ Make sure you've set the environment variables in your MCP configuration.
 
 - Verify your API token is correct
 - Ensure your email matches your Atlassian account
-- Check that your JIRA_BASE_URL doesn't have a trailing slash
+- Check that your `JIRA_BASE_URL` doesn't have a trailing slash
 
 ### Permission errors
 

@@ -97,52 +97,52 @@ class JiraMCPServer {
     // Handle tool calls
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       switch (request.params.name) {
-        // Issue Management tools
-        case 'get_issue':
-          return this.issueHandlers.handleGetIssue(request.params.arguments);
-        case 'create_issue':
-          return this.issueHandlers.handleCreateIssue(request.params.arguments);
-        case 'update_issue':
-          return this.issueHandlers.handleUpdateIssue(request.params.arguments);
-        case 'assign_issue':
-          return this.issueHandlers.handleAssignIssue(request.params.arguments);
-
-        // Search tools
-        case 'search_issues':
-          return this.searchHandlers.handleSearchIssues(request.params.arguments);
-        case 'list_projects':
-          return this.projectHandlers.handleListProjects(request.params.arguments);
-
-        // Metadata tools
-        case 'get_create_metadata':
-          return this.metadataHandlers.handleGetCreateMetadata(request.params.arguments);
-
-        // User tools
-        case 'search_users':
-          return this.userHandlers.handleSearchUsers(request.params.arguments);
-
-        // Comment tools
-        case 'add_comment':
-          return this.commentHandlers.handleAddComment(request.params.arguments);
-        case 'get_comments':
-          return this.commentHandlers.handleGetComments(request.params.arguments);
-
-        // Transition tools
-        case 'get_transitions':
-          return this.transitionHandlers.handleGetTransitions(request.params.arguments);
-        case 'transition_issue':
-          return this.transitionHandlers.handleTransitionIssue(request.params.arguments);
-
-        // Attachment tools
-        case 'list_attachments':
-          return this.attachmentHandlers.handleListAttachments(request.params.arguments);
-        case 'get_attachment_content':
-          return this.attachmentHandlers.handleGetAttachmentContent(request.params.arguments);
-        case 'upload_attachment':
-          return this.attachmentHandlers.handleUploadAttachment(request.params.arguments);
-        case 'delete_attachment':
-          return this.attachmentHandlers.handleDeleteAttachment(request.params.arguments);
-
+        case 'jira_issues': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'get':    return this.issueHandlers.handleGetIssue(args);
+            case 'create': return this.issueHandlers.handleCreateIssue(args);
+            case 'update': return this.issueHandlers.handleUpdateIssue(args);
+            case 'assign': return this.issueHandlers.handleAssignIssue(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
+        case 'jira_search': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'issues':          return this.searchHandlers.handleSearchIssues(args);
+            case 'projects':        return this.projectHandlers.handleListProjects(args);
+            case 'users':           return this.userHandlers.handleSearchUsers(args);
+            case 'create_metadata': return this.metadataHandlers.handleGetCreateMetadata(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
+        case 'jira_comments': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'get': return this.commentHandlers.handleGetComments(args);
+            case 'add': return this.commentHandlers.handleAddComment(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
+        case 'jira_workflow': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'get_transitions': return this.transitionHandlers.handleGetTransitions(args);
+            case 'transition':      return this.transitionHandlers.handleTransitionIssue(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
+        case 'jira_attachments': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'list':        return this.attachmentHandlers.handleListAttachments(args);
+            case 'get_content': return this.attachmentHandlers.handleGetAttachmentContent(args);
+            case 'upload':      return this.attachmentHandlers.handleUploadAttachment(args);
+            case 'delete':      return this.attachmentHandlers.handleDeleteAttachment(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
         default:
           throw new McpError(
             ErrorCode.MethodNotFound,
