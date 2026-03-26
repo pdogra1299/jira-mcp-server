@@ -3,6 +3,20 @@ import FormData from 'form-data';
 import { createReadStream } from 'fs';
 import { basename } from 'path';
 
+export class JiraApiError extends Error {
+  status: number;
+  fieldErrors: Record<string, string>;
+  jiraErrorMessages: string[];
+
+  constructor(message: string, status: number, fieldErrors: Record<string, string>, jiraErrorMessages: string[]) {
+    super(message);
+    this.name = 'JiraApiError';
+    this.status = status;
+    this.fieldErrors = fieldErrors;
+    this.jiraErrorMessages = jiraErrorMessages;
+  }
+}
+
 export class JiraApiClient {
   private client: AxiosInstance;
   private baseUrl: string;
@@ -56,7 +70,12 @@ export class JiraApiClient {
             message += data?.message || error.message;
           }
 
-          throw new Error(message);
+          throw new JiraApiError(
+            message,
+            status,
+            data?.errors && typeof data.errors === 'object' ? data.errors : {},
+            Array.isArray(data?.errorMessages) ? data.errorMessages : []
+          );
         }
         throw error;
       }

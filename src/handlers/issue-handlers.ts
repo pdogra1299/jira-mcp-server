@@ -1,4 +1,4 @@
-import { JiraApiClient } from '../utils/api-client.js';
+import { JiraApiClient, JiraApiError } from '../utils/api-client.js';
 import { JiraFormatters } from '../utils/formatters.js';
 import { UserHandlers } from './user-handlers.js';
 
@@ -136,6 +136,49 @@ export class IssueHandlers {
         ],
       };
     } catch (error: any) {
+      // Auto-fetch metadata on validation failure to help the AI self-correct
+      if (error instanceof JiraApiError && error.status === 400 && Object.keys(error.fieldErrors).length > 0) {
+        try {
+          const metaParams: any = {
+            projectKeys: args.projectKey,
+            expand: 'projects.issuetypes.fields',
+          };
+          if (args.issueType) {
+            metaParams.issuetypeNames = args.issueType;
+          }
+          const metadata = await this.apiClient.get('/issue/createmeta', metaParams);
+          const project = metadata.projects?.[0];
+          const issueTypeInfo = project?.issuetypes?.find((t: any) => t.name === args.issueType);
+
+          const requiredFields = issueTypeInfo?.fields
+            ? Object.entries(issueTypeInfo.fields)
+                .filter(([, f]: [string, any]) => (f as any).required)
+                .map(([key, f]: [string, any]) => {
+                  let info = `  - ${key} (${f.name}): type=${f.schema?.type || 'unknown'}`;
+                  if (f.allowedValues?.length > 0 && f.allowedValues.length < 15) {
+                    info += `, allowed=[${f.allowedValues.map((v: any) => v.name || v.value).join(', ')}]`;
+                  }
+                  return info;
+                })
+                .join('\n')
+            : 'Could not fetch metadata';
+
+          const fieldErrorList = Object.entries(error.fieldErrors)
+            .map(([fieldId, msg]) => `  - ${fieldId}: ${msg}`)
+            .join('\n');
+
+          return {
+            content: [{
+              type: 'text',
+              text: `Error: Issue creation failed — validation errors:\n${fieldErrorList}\n\nRequired fields for ${args.issueType} in ${args.projectKey}:\n${requiredFields}\n\nPass missing fields via the customFields parameter.`,
+            }],
+            isError: true,
+          };
+        } catch {
+          // Metadata fetch failed, fall through to generic error
+        }
+      }
+
       return {
         content: [
           {
