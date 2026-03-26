@@ -305,6 +305,19 @@ export class JiraFormatters {
       return `Error: ${error}`;
     }
 
+    // Handle JiraApiError with structured field-level errors
+    if (error.fieldErrors && Object.keys(error.fieldErrors).length > 0) {
+      const fieldErrorList = Object.entries(error.fieldErrors)
+        .map(([fieldId, msg]) => `  - ${fieldId}: ${msg}`)
+        .join('\n');
+      return `Error: JIRA validation failed.\nField errors:\n${fieldErrorList}\n\nUse get_create_metadata to discover required fields and allowed values, then pass missing fields via the customFields parameter.`;
+    }
+
+    // Handle JiraApiError with only errorMessages
+    if (error.jiraErrorMessages?.length > 0) {
+      return `Error: ${error.jiraErrorMessages.join('. ')}`;
+    }
+
     const message = error.message || error.errorMessages?.[0] || 'Unknown error';
     return `Error: ${message}`;
   }
