@@ -15,7 +15,8 @@ A Model Context Protocol (MCP) server for Jira API integration. This server enab
 - **User Search**: Find users by email or name for assignments
 - **Projects**: List all accessible projects
 - **Attachments**: List, upload, delete attachments and retrieve their content — text files returned as text, images rendered inline via Claude vision
-- **Token Efficient**: 5 compound tools instead of 16 flat tools — ~50% fewer tokens per session
+- **Issue Links**: Add, remove, and list relationships between issues (relates, blocks, duplicates) without touching the constrained `parent` hierarchy field
+- **Token Efficient**: 6 compound tools instead of 17+ flat tools — ~50% fewer tokens per session
 
 ## Installation
 
@@ -115,7 +116,7 @@ Add the following to your Claude Desktop MCP settings file:
 
 ## Tool Architecture
 
-This server exposes **5 compound tools** — each with an `action` parameter that selects the operation. This design reduces the token overhead of tool definitions by ~50% compared to 16 flat tools, leaving more context for actual work.
+This server exposes **6 compound tools** — each with an `action` parameter that selects the operation. This design reduces the token overhead of tool definitions by ~50% compared to 17+ flat tools, leaving more context for actual work.
 
 | Tool | Actions | Description |
 |------|---------|-------------|
@@ -124,6 +125,7 @@ This server exposes **5 compound tools** — each with an `action` parameter tha
 | `jira_comments` | `get` `add` | Read and write comments |
 | `jira_workflow` | `get_transitions` `transition` | Status transitions |
 | `jira_attachments` | `list` `get_content` `upload` `delete` | File attachments |
+| `jira_links` | `list` `add` `remove` `get_link_types` | Issue link relationships |
 
 ---
 
@@ -166,7 +168,7 @@ Search and discover Jira resources.
 
 | Action | Description | Required params | Optional params |
 |--------|-------------|-----------------|-----------------|
-| `issues` | Search issues via JQL | `jql` | `maxResults` |
+| `issues` | Search issues via JQL | `jql` | `maxResults`, `fields` |
 | `projects` | List all accessible projects | — | `maxResults` |
 | `users` | Find users by name or email | `query` | `maxResults` |
 | `create_metadata` | Get field requirements for creating issues | `projectKey` | `issueType` |
@@ -181,6 +183,9 @@ priority = High AND created >= -7d
 **Tips**:
 - Use `create_metadata` before `jira_issues` `create` to understand what fields are required for a project/issue type.
 - Use `users` to look up account IDs for assignments — pass the returned account ID or email to `jira_issues` `assign`.
+- `fields` (for `issues`) controls which JIRA fields are fetched per result — e.g. `["summary","status","priority","duedate","assignee"]`. Defaults to `["summary"]`.
+
+**Structured output**: the `issues` action and `jira_issues` `get` return a `structuredContent` JSON payload alongside the markdown, so programmatic consumers can read fields directly without parsing markdown. For `issues` it is `{ jql, count, isLast, nextPageToken, issues: [{ key, id, self, fields }] }`.
 
 ---
 
@@ -254,6 +259,38 @@ List attachments on PROJ-123
 Get the content of attachment 136904
 Upload /tmp/report.pdf to PROJ-123
 Delete attachment 136904
+```
+
+---
+
+### `jira_links`
+
+Manage relationships between issues independently of Jira's project hierarchy config — useful when you need to associate a Bug with a Story but the project doesn't allow Bug → Story as a parent-child relationship.
+
+**Required**: `action`
+
+| Action | Description | Required params | Optional params |
+|--------|-------------|-----------------|-----------------|
+| `get_link_types` | List available link type names for this Jira instance | — | — |
+| `add` | Create a link between two issues | `issueKey`, `linkedIssueKey`, `linkType` | `direction` |
+| `list` | List all links on an issue, with link IDs | `issueKey` | — |
+| `remove` | Delete a link by ID | `linkId` | — |
+
+**Link direction**:
+- Symmetric types (`Relates`, `Duplicate`): `direction` doesn't matter.
+- Directional types (`Blocks`, `Cloners`, `Causes`): `direction: outward` means `issueKey` is the outward side (e.g. `issueKey` *blocks* `linkedIssueKey`); `direction: inward` means `issueKey` is the inward side (e.g. `issueKey` *is blocked by* `linkedIssueKey`). Defaults to `outward`.
+
+**Tips**:
+- Run `get_link_types` first — link type names vary per Jira instance config.
+- Use `list` to find a `linkId` before calling `remove`.
+
+**Examples**:
+```
+List the link types available in Jira
+Link PROJ-1 to PROJ-2 as Relates
+Mark PROJ-1 as blocking PROJ-2
+List all links on PROJ-1
+Remove link 10042
 ```
 
 ---

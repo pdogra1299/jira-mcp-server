@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-05-19
+
+### Added
+
+- **New `jira_links` compound tool** for managing Jira issue links independently of the project hierarchy config. Supports four actions:
+  - `get_link_types` — list the available link type names for the Jira instance (they vary per project config)
+  - `add` — create a link between two issues, with `direction` control for directional types (Blocks, Cloners)
+  - `list` — show all links on an issue, including link IDs
+  - `remove` — delete a link by ID
+
+  This gives AI agents an `issuelinks` write path when a project's hierarchy config forbids a `parent` change (e.g. Bug → Story), removing the manual "click Link in the Jira UI" fallback.
+
+- **`fields` parameter on `jira_search` (`issues` action)** — callers can now request specific JIRA fields (e.g. `["summary","status","priority","duedate","assignee"]`). Previously the handler hardcoded `["summary"]` and silently dropped any caller intent. Defaults to `["summary"]`, so existing consumers are unaffected.
+
+- **`structuredContent` on `jira_search` and `jira_issues` (`get`)** — search and single-issue results now include a machine-readable JSON payload alongside the existing markdown, so programmatic consumers no longer have to re-parse markdown. The markdown output is byte-for-byte unchanged.
+
+### Fixed
+
+- **`formatIssue` now renders the issue due date** — `duedate` was fetched but never displayed; the issue view now shows a `Due` field.
+
 ## [1.1.2] - 2026-03-26
 
 ### Fixed

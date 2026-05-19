@@ -51,6 +51,13 @@ export class IssueHandlers {
             text: JiraFormatters.formatIssue(issue, fieldMetadata),
           },
         ],
+        // Machine-readable channel for programmatic consumers.
+        structuredContent: {
+          key: issue.key,
+          id: issue.id,
+          self: issue.self,
+          fields: issue.fields ?? {},
+        },
       };
     } catch (error: any) {
       return {

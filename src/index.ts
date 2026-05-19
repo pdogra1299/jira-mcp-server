@@ -17,6 +17,7 @@ import { ProjectHandlers } from './handlers/project-handlers.js';
 import { MetadataHandlers } from './handlers/metadata-handlers.js';
 import { UserHandlers } from './handlers/user-handlers.js';
 import { AttachmentHandlers } from './handlers/attachment-handlers.js';
+import { LinkHandlers } from './handlers/link-handlers.js';
 import { toolDefinitions } from './tools/definitions.js';
 
 // Get environment variables
@@ -47,6 +48,7 @@ class JiraMCPServer {
   private metadataHandlers: MetadataHandlers;
   private userHandlers: UserHandlers;
   private attachmentHandlers: AttachmentHandlers;
+  private linkHandlers: LinkHandlers;
 
   constructor() {
     this.server = new Server(
@@ -77,6 +79,7 @@ class JiraMCPServer {
     this.projectHandlers = new ProjectHandlers(this.apiClient);
     this.metadataHandlers = new MetadataHandlers(this.apiClient);
     this.attachmentHandlers = new AttachmentHandlers(this.apiClient);
+    this.linkHandlers = new LinkHandlers(this.apiClient);
 
     this.setupToolHandlers();
 
@@ -140,6 +143,16 @@ class JiraMCPServer {
             case 'get_content': return this.attachmentHandlers.handleGetAttachmentContent(args);
             case 'upload':      return this.attachmentHandlers.handleUploadAttachment(args);
             case 'delete':      return this.attachmentHandlers.handleDeleteAttachment(args);
+            default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
+          }
+        }
+        case 'jira_links': {
+          const args = request.params.arguments as any;
+          switch (args.action) {
+            case 'list':           return this.linkHandlers.handleListLinks(args);
+            case 'add':            return this.linkHandlers.handleAddLink(args);
+            case 'remove':         return this.linkHandlers.handleRemoveLink(args);
+            case 'get_link_types': return this.linkHandlers.handleGetLinkTypes();
             default: throw new McpError(ErrorCode.InvalidParams, `Unknown action: ${args.action}`);
           }
         }

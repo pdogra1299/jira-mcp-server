@@ -1,6 +1,6 @@
 {
   "name": "@nexus2520/jira-mcp-server",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "MCP server for Jira API integration - supports Jira Cloud",
   "type": "module",
   "main": "./build/index.js",
@@ -16,6 +16,8 @@
     "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
     "dev": "tsc --watch",
     "start": "node build/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "pnpm run build"
   },
   "packageManager": "pnpm@9.0.0",
@@ -51,6 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.29",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.6"
   }
 }

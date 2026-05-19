@@ -111,11 +111,12 @@ export class JiraFormatters {
     const reporter = fields.reporter?.displayName || 'Unknown';
     const created = fields.created ? new Date(fields.created).toLocaleString() : 'Unknown';
     const updated = fields.updated ? new Date(fields.updated).toLocaleString() : 'Unknown';
+    const dueDate = fields.duedate || 'No due date';
 
     let formatted = `# ${key}: ${summary}\n\n`;
     formatted += `**Type**: ${issueType} | **Status**: ${status} | **Priority**: ${priority}\n`;
     formatted += `**Assignee**: ${assignee} | **Reporter**: ${reporter}\n`;
-    formatted += `**Created**: ${created} | **Updated**: ${updated}\n\n`;
+    formatted += `**Created**: ${created} | **Updated**: ${updated} | **Due**: ${dueDate}\n\n`;
     formatted += `## Description\n${description}\n`;
 
     // Add labels if present
