@@ -90,11 +90,11 @@ describe('LinkHandlers.handleListLinks', () => {
       get: vi.fn().mockResolvedValue({
         fields: {
           issuelinks: [
-            // outwardIssue set => the linked issue is the outward side, so the
-            // queried issue is the inward side => use the type's inward label.
+            // outwardIssue set => the linked issue is on the outward side, so the
+            // relationship reads with the type's OUTWARD label (PROJ-1 blocks PROJ-2).
             { id: '101', type: blocks, outwardIssue: { key: 'PROJ-2', fields: { summary: 'Story X' } } },
-            // inwardIssue set => the linked issue is the inward side, so the
-            // queried issue is the outward side => use the type's outward label.
+            // inwardIssue set => the linked issue is on the inward side, so the
+            // relationship reads with the type's INWARD label (PROJ-1 is blocked by PROJ-3).
             { id: '102', type: blocks, inwardIssue: { key: 'PROJ-3', fields: { summary: 'Blocker Y' } } },
           ],
         },
@@ -105,8 +105,8 @@ describe('LinkHandlers.handleListLinks', () => {
     const result = await handler.handleListLinks({ issueKey: 'PROJ-1' });
 
     expect(apiClient.get).toHaveBeenCalledWith('/issue/PROJ-1', { fields: 'issuelinks' });
-    expect(result.content[0].text).toContain('**is blocked by** PROJ-2');
-    expect(result.content[0].text).toContain('**blocks** PROJ-3');
+    expect(result.content[0].text).toContain('**blocks** PROJ-2');
+    expect(result.content[0].text).toContain('**is blocked by** PROJ-3');
     expect(result.content[0].text).toContain('Link ID: 101');
     expect(result.content[0].text).toContain('Link ID: 102');
   });

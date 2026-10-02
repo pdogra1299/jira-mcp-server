@@ -29,16 +29,17 @@ export class LinkHandlers {
       let response = `# Links on ${issueKey}\n\n`;
       links.forEach((link: any) => {
         const typeName = link.type?.name ?? 'Unknown';
-        // Jira returns either inwardIssue or outwardIssue — it names the role of
-        // the OTHER issue. If outwardIssue is set, the linked issue is the outward
-        // side, so `issueKey` is the inward side and the relationship reads with
-        // the type's inward description (and vice-versa).
+        // Jira returns either inwardIssue or outwardIssue — it names the OTHER
+        // issue and which side of the relationship it sits on. When outwardIssue
+        // is set, that issue is the outward side, so the relationship reads with
+        // the type's OUTWARD description (e.g. "blocks"); when inwardIssue is set,
+        // it reads with the INWARD description (e.g. "is blocked by").
         if (link.outwardIssue) {
-          response += `- **${link.type?.inward ?? typeName}** ${link.outwardIssue.key}: ${link.outwardIssue.fields?.summary ?? '(no summary)'}\n`;
+          response += `- **${link.type?.outward ?? typeName}** ${link.outwardIssue.key}: ${link.outwardIssue.fields?.summary ?? '(no summary)'}\n`;
           response += `  - Link ID: ${link.id}\n`;
         }
         if (link.inwardIssue) {
-          response += `- **${link.type?.outward ?? typeName}** ${link.inwardIssue.key}: ${link.inwardIssue.fields?.summary ?? '(no summary)'}\n`;
+          response += `- **${link.type?.inward ?? typeName}** ${link.inwardIssue.key}: ${link.inwardIssue.fields?.summary ?? '(no summary)'}\n`;
           response += `  - Link ID: ${link.id}\n`;
         }
       });
